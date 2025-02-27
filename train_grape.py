@@ -19,21 +19,15 @@ from PIL import Image
 from torchvision import transforms
 
 def get_bag_feats(csv_file_df, args):
-    """
-    获取bag特征和标签
-    支持直接特征模式和图像处理模式
-    """
+
     feats_csv_path = csv_file_df.iloc[0]
     
     if args.mode == 'No Feature':
-        # 从CSV路径提取图像文件夹路径
         image_folder = feats_csv_path.replace('.csv', '')
         image_folder = os.path.join('datasets/OHTS_1', '/'.join(image_folder.split('/')[1:]))
         
-        # 获取文件夹中的所有jpg文件
         image_files = sorted(glob.glob(os.path.join(image_folder, '*.jpg')))
         
-        # 定义图像预处理
         transform = transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
@@ -41,7 +35,6 @@ def get_bag_feats(csv_file_df, args):
                               std=[0.229, 0.224, 0.225])
         ])
         
-        # 处理所有图像
         feats = []
         for img_path in image_files:
             try:
@@ -55,16 +48,13 @@ def get_bag_feats(csv_file_df, args):
         if not feats:
             raise ValueError(f"No valid images found in {image_folder}")
             
-        # 将所有图像张量堆叠成一个批次
         feats = torch.cat(feats, dim=0)  # Shape: [N, 3, 224, 224]
         
     else:
-        # 原有的特征处理逻辑
         df = pd.read_csv(feats_csv_path)
         feats = shuffle(df).reset_index(drop=True)
         feats = feats.to_numpy()
     
-    # 标签处理保持不变
     label = np.zeros(args.num_classes)
     if args.num_classes == 1:
         label[0] = csv_file_df['label']
@@ -75,10 +65,7 @@ def get_bag_feats(csv_file_df, args):
     return label, feats, feats_csv_path
 
 def generate_pt_files(args, df):
-    """
-    生成训练用的.pt文件
-    支持特征模式和图像模式
-    """
+
     temp_train_dir = "temp_train"
     if os.path.exists(temp_train_dir):
         import shutil
@@ -91,25 +78,20 @@ def generate_pt_files(args, df):
             label, feats, feats_csv_path = get_bag_feats(df.iloc[i], args)
             
             if args.mode == 'No Feature':
-                # 图像特征模式
                 # feats shape: [N, 3, 224, 224]
-                bag_feats = feats  # 已经是tensor
+                bag_feats = feats  
                 
-                # 确保标签是正确的形状
                 bag_label = torch.tensor(label, dtype=torch.long)
                 
-                # 创建一个新的tensor来存储特征和标签
                 n_patches = bag_feats.size(0)
-                label_repeated = bag_label.repeat(n_patches,1)  # 重复标签以匹配patch数量
+                label_repeated = bag_label.repeat(n_patches,1)  
                 
-                # 保存为dict格式，包含特征和标签
                 data_dict = {
                     'features': bag_feats,  # [N, 3, 224, 224]
                     'label': label_repeated  # [N]
                 }
                 
             else:
-                # 原有的特征处理模式
                 bag_feats = torch.tensor(np.array(feats), dtype=torch.float32)
                 bag_label = torch.tensor(label, dtype=torch.float32)
                 
@@ -118,13 +100,12 @@ def generate_pt_files(args, df):
                     'label': bag_label
                 }
             
-            # 保存为.pt文件
             pt_file_path = os.path.join(temp_train_dir, 
                                       os.path.splitext(feats_csv_path)[0].split(os.sep)[-1] + ".pt")
             with open(pt_file_path, 'wb') as f:
                 torch.save(data_dict, f)
-                f.flush()  # 强制写入缓存
-                os.fsync(f.fileno())  # 刷新到磁盘
+                f.flush() 
+                os.fsync(f.fileno())  
             
         except Exception as e:
             print(f"Error processing file {i}: {str(e)}")
@@ -141,7 +122,6 @@ def train(args, train_df, milnet, criterion, optimizer):
     for i, item in enumerate(dirs):
         optimizer.zero_grad()
         
-        # 加载数据
         data_dict = torch.load(item, map_location='cuda:0')
         bag_feats = data_dict['features']
         bag_label = data_dict['label'].unsqueeze(0)
@@ -158,7 +138,6 @@ def train(args, train_df, milnet, criterion, optimizer):
         max_loss = criterion(max_prediction.view(1, -1), torch.zeros_like(max_prediction.view(1, -1)))
         loss = 1.5 *  bag_loss + max_loss
         
-        # 计算准确率
         _, predicted = torch.max(bag_prediction.data, 1)
         acc = (predicted == bag_label).sum().item() / bag_label.size(0) * 100
         
@@ -166,7 +145,7 @@ def train(args, train_df, milnet, criterion, optimizer):
         optimizer.step()
         
         loss_meter.update(loss.item(), 1)
-        acc_meter.update(acc, 1)  # 更新准确率
+        acc_meter.update(acc, 1)  
         
         sys.stdout.write('\r Training bag [%d/%d] loss: %.4f, acc: %.3f%%' % 
                         (i, len(train_df), loss.item(), acc))
@@ -179,7 +158,7 @@ def train(args, train_df, milnet, criterion, optimizer):
 def test(args, test_df, milnet, criterion, return_predictions=False):
     milnet.eval()
     loss_meter = AverageMeter()
-    acc_meter = AverageMeter()  # 添加准确率计量器
+    acc_meter = AverageMeter()  
     Tensor = torch.cuda.FloatTensor
     
     test_labels = []
@@ -202,7 +181,6 @@ def test(args, test_df, milnet, criterion, return_predictions=False):
             max_loss = criterion(max_prediction.view(1, -1), torch.zeros_like(max_prediction.view(1, -1)))
             loss = 1.5 * bag_loss + max_loss
             
-            # 计算准确率
             _, predicted = torch.max(bag_prediction, 1)
             bag_label_arg = torch.argmax(bag_label, dim=1)
 
@@ -233,8 +211,6 @@ def dropout_patches(feats, p):
     selected_rows = feats[random_indices]
     return selected_rows
 
-
-# 辅助类：用于计算平均值
 class AverageMeter(object):
     def __init__(self):
         self.reset()
@@ -250,8 +226,7 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
-
-# 准确率计算函数
+        
 def calculate_auc(labels, predictions):
     """
     Calculate AUC for multi-class predictions
