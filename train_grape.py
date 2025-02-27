@@ -290,7 +290,7 @@ def main():
     parser.add_argument('--stop_epochs', default=10, type=int, help='Skip remaining epochs if training has not improved after N epochs [10]')
     parser.add_argument('--gpu_index', type=int, nargs='+', default=(0,), help='GPU ID(s) [0]')
     parser.add_argument('--weight_decay', default=1e-3, type=float, help='Weight decay [1e-3]')
-    parser.add_argument('--dataset', default='OHTS', type=str, help='Dataset folder name')
+    parser.add_argument('--dataset', default='GRAPE', type=str, help='Dataset folder name')
     parser.add_argument('--split', default=0.2, type=float, help='Training/Validation split [0.2]')
     parser.add_argument('--model', default='dure', type=str, help='model name')
     parser.add_argument('--dropout_patch', default=0, type=float, help='Patch dropout rate [0]')
