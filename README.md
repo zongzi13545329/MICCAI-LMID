@@ -21,7 +21,7 @@ unzip GRAPE.zip
 ```
 
 ### Useful arguments:
-``
+```
 [--num_classes]       # Number of non-negative classes, for a binary classification (postive/negative), this is set to 2
 [--feats_size]        # Size of feature vector (depends on the backbone)
 [--lr]                # Initial learning rate [0.0001]
@@ -30,3 +30,4 @@ unzip GRAPE.zip
 [--weight_decay]      # Weight decay [1e-3]
 [--dataset]           # Dataset folder name, this is set to GRAPE
 [--split]             # Training/validation split [0.2]
+```
