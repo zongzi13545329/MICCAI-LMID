@@ -9,7 +9,6 @@ Required packages
 ```
 Install [PyTorch](https://pytorch.org/get-started/locally/)  
 Install [OpenSlide and openslide-python](https://pypi.org/project/openslide-python/).  
-[Tutorial 1](https://openslide.org/) and [Tutorial 2 (Windows)](https://www.youtube.com/watch?v=0i75hfLlPsw).  
 
 ## Download GRAOE.zip
 unzip GRAPE.zip
